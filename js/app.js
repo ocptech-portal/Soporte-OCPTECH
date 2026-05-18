@@ -1,7 +1,9 @@
 /*
   Configuración requerida:
-  1. service_app_token: token de la Service App de Webex.
-  2. CLICK_TO_CALL_CALLED_NUMBER: número, cola o destino que recibirá la llamada.
+  1. service_app_token: access token actual de la Service App de Webex.
+  2. service_app_refresh_token: refresh token de la Service App de Webex.
+  3. service_app_client_id / service_app_client_secret: credenciales OAuth de la Service App.
+  4. CLICK_TO_CALL_CALLED_NUMBER: número, cola o destino que recibirá la llamada.
 
   Nota importante:
   El call token/JWE de Click-to-Call se solicita nuevamente en cada clic.
@@ -10,8 +12,11 @@
   Para producción, no expongas el token de la Service App en el navegador.
   La generación de guest token y call token debería hacerse desde un backend.
 */
-let service_app_token = 'YTNmOThlZjEtODY5YS00OTM2LWJiYzQtYTY0YTdjMWU5ZjVmNjc1MjY3YTctMWY0_P0A1_cbbe27d4-1f60-43cb-819b-fd3749c66621';
-const CLICK_TO_CALL_CALLED_NUMBER = '6100';
+let service_app_token = '';
+let service_app_refresh_token = '';
+const service_app_client_id = '';
+const service_app_client_secret = '';
+const CLICK_TO_CALL_CALLED_NUMBER = '';
 const CLICK_TO_CALL_GUEST_NAME = 'Unidos por la colaboración';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
@@ -85,9 +90,138 @@ if (callNotificationElem) {
   callNotification = new CallNotificationElement(callNotificationElem, callTimer);
 }
 
+
+const WEBEX_TOKEN_STORAGE_KEY = 'webex_click_to_call_service_app_tokens';
+
+function getStoredServiceAppTokens() {
+  try {
+    const stored = window.localStorage.getItem(WEBEX_TOKEN_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.warn('[Click to Call] No se pudo leer localStorage:', error);
+    return {};
+  }
+}
+
+function saveStoredServiceAppTokens(tokens) {
+  try {
+    const current = getStoredServiceAppTokens();
+    window.localStorage.setItem(WEBEX_TOKEN_STORAGE_KEY, JSON.stringify({
+      ...current,
+      ...tokens,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.warn('[Click to Call] No se pudo guardar tokens en localStorage:', error);
+  }
+}
+
+function getStoredServiceAppAccessToken() {
+  const stored = getStoredServiceAppTokens();
+  return stored.accessToken || service_app_token;
+}
+
+function getStoredServiceAppRefreshToken() {
+  const stored = getStoredServiceAppTokens();
+  return stored.refreshToken || service_app_refresh_token;
+}
+
+function updateInMemoryServiceAppTokens({ accessToken, refreshToken }) {
+  if (accessToken) service_app_token = accessToken;
+  if (refreshToken) service_app_refresh_token = refreshToken;
+  saveStoredServiceAppTokens({
+    accessToken: accessToken || service_app_token,
+    refreshToken: refreshToken || service_app_refresh_token,
+  });
+}
+
+function maskToken(token) {
+  if (!token) return 'vacío';
+  if (token.length <= 12) return `${token.slice(0, 4)}...`;
+  return `${token.slice(0, 6)}...${token.slice(-6)}`;
+}
+
+async function refreshServiceAppAccessToken() {
+  const config = getClickToCallConfig();
+  if (!config.refreshToken) {
+    throw new Error('No hay service_app_refresh_token configurado para renovar el access token.');
+  }
+  if (!config.clientId || !config.clientSecret) {
+    throw new Error('Para renovar el access token configura service_app_client_id y service_app_client_secret.');
+  }
+
+  updateAuthIndicator({ config: 'ok', auth: 'working', line: 'pending', message: 'Renovando access token con refresh token.' });
+
+  const body = new URLSearchParams();
+  body.set('grant_type', 'refresh_token');
+  body.set('client_id', config.clientId);
+  body.set('client_secret', config.clientSecret);
+  body.set('refresh_token', config.refreshToken);
+
+  const response = await fetch('https://webexapis.com/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  });
+
+  const data = await readJsonResponse(response);
+  if (!response.ok || !data.access_token) {
+    throw new Error(`No se pudo renovar el access token (${response.status}): ${JSON.stringify(data)}`);
+  }
+
+  updateInMemoryServiceAppTokens({
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || config.refreshToken,
+  });
+
+  logClickToCall('Access token renovado', {
+    accessToken: maskToken(data.access_token),
+    refreshToken: maskToken(data.refresh_token || config.refreshToken),
+    expiresIn: data.expires_in,
+  });
+
+  updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'pending', message: 'Access token renovado.' });
+  return data.access_token;
+}
+
+async function fetchWithServiceAppAuth(url, options = {}, retryOnUnauthorized = true) {
+  let token = getStoredServiceAppAccessToken();
+
+  if (!token && getStoredServiceAppRefreshToken()) {
+    token = await refreshServiceAppAccessToken();
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if ((response.status === 401 || response.status === 403) && retryOnUnauthorized && getStoredServiceAppRefreshToken()) {
+    const errorBody = await readJsonResponse(response);
+    logClickToCall(`Access token rechazado (${response.status}). Intentando renovar.`, errorBody);
+    const freshToken = await refreshServiceAppAccessToken();
+    const retryHeaders = new Headers(options.headers || {});
+    retryHeaders.set('Authorization', `Bearer ${freshToken}`);
+    return fetch(url, {
+      ...options,
+      headers: retryHeaders,
+    });
+  }
+
+  return response;
+}
+
 function getClickToCallConfig() {
   return {
-    serviceAppToken: service_app_token,
+    serviceAppToken: getStoredServiceAppAccessToken(),
+    refreshToken: getStoredServiceAppRefreshToken(),
+    clientId: service_app_client_id,
+    clientSecret: service_app_client_secret,
     calledNumber: CLICK_TO_CALL_CALLED_NUMBER,
     guestName: CLICK_TO_CALL_GUEST_NAME,
     region: WEBEX_DISCOVERY_REGION,
@@ -141,7 +275,9 @@ function updateAuthIndicator({ config = 'pending', auth = 'pending', line = 'pen
 function validateClickToCallConfig() {
   const config = getClickToCallConfig();
   const missing = [];
-  if (!config.serviceAppToken) missing.push('service_app_token');
+  if (!config.serviceAppToken && !config.refreshToken) missing.push('service_app_token o service_app_refresh_token');
+  if (config.refreshToken && !config.clientId) missing.push('service_app_client_id');
+  if (config.refreshToken && !config.clientSecret) missing.push('service_app_client_secret');
   if (!config.calledNumber) missing.push('CLICK_TO_CALL_CALLED_NUMBER');
   return missing;
 }
@@ -172,7 +308,7 @@ function prepareClickToCall() {
     config: 'ok',
     auth: 'pending',
     line: 'pending',
-    message: 'Configuración lista. El token se generará en cada clic.',
+    message: 'Configuración lista. Se renovará el access token si hace falta y se generará call token en cada clic.',
   });
   setClickToCallButtonReady(true);
 }
@@ -188,15 +324,14 @@ async function readJsonResponse(response) {
 
 async function getGuestToken() {
   const config = getClickToCallConfig();
-  if (!config.serviceAppToken) throw new Error('Configura service_app_token en js/app.js.');
+  if (!config.serviceAppToken && !config.refreshToken) throw new Error('Configura service_app_token o service_app_refresh_token en js/app.js.');
 
   updateAuthIndicator({ config: 'ok', auth: 'working', line: 'pending', message: 'Solicitando guest token.' });
 
-  const response = await fetch('https://webexapis.com/v1/guests/token', {
+  const response = await fetchWithServiceAppAuth('https://webexapis.com/v1/guests/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.serviceAppToken}`,
     },
     body: JSON.stringify({
       subject: 'Webex Click To Call Demo',
@@ -216,16 +351,15 @@ async function getGuestToken() {
 
 async function getJweToken() {
   const config = getClickToCallConfig();
-  if (!config.serviceAppToken) throw new Error('Configura service_app_token en js/app.js.');
+  if (!config.serviceAppToken && !config.refreshToken) throw new Error('Configura service_app_token o service_app_refresh_token en js/app.js.');
   if (!config.calledNumber) throw new Error('Configura CLICK_TO_CALL_CALLED_NUMBER en js/app.js.');
 
   updateAuthIndicator({ config: 'ok', auth: 'working', line: 'pending', message: 'Generando call token fresco.' });
 
-  const response = await fetch('https://webexapis.com/v1/telephony/click2call/callToken', {
+  const response = await fetchWithServiceAppAuth('https://webexapis.com/v1/telephony/click2call/callToken', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.serviceAppToken}`,
     },
     body: JSON.stringify({
       calledNumber: config.calledNumber,
