@@ -407,6 +407,7 @@ async function getCallingConfig() {
   return {
     clientConfig: {
       calling: true,
+      video: true,
       callHistory: false,
     },
     callingClientConfig: {
