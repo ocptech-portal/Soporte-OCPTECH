@@ -13,10 +13,7 @@
       --muted: #5b6678;
       --accent: #0b5cab;
       --accent-dark: #08457f;
-      --ready: #14853d;
-      --warning: #b26a00;
       --danger: #c62828;
-      --border: #dde5ef;
       --shadow: 0 24px 70px rgba(22, 32, 51, 0.14);
     }
 
@@ -40,14 +37,14 @@
     }
 
     .hero-card {
-      min-height: 420px;
+      min-height: 360px;
       padding: clamp(36px, 8vw, 84px) clamp(24px, 6vw, 72px);
       border-radius: 32px;
       background: var(--card-bg);
       box-shadow: var(--shadow);
       display: grid;
       place-items: center;
-      gap: 28px;
+      gap: 36px;
       text-align: center;
     }
 
@@ -88,89 +85,64 @@
 
     .status-panel {
       width: min(100%, 520px);
-      padding: 16px 18px;
-      border: 1px solid var(--border);
+      padding: 18px;
+      border: 1px solid #dbe3ef;
       border-radius: 18px;
-      background: #fbfcfe;
+      background: #f8fafd;
       text-align: left;
     }
 
-    .connection-status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
+    .status-title {
+      margin: 0 0 12px;
+      font-weight: 800;
       color: var(--text);
-      font-size: 0.98rem;
-      font-weight: 700;
-    }
-
-    .status-dot {
-      width: 12px;
-      height: 12px;
-      flex: 0 0 12px;
-      border-radius: 999px;
-      background: var(--warning);
-      box-shadow: 0 0 0 6px rgba(178, 106, 0, 0.12);
-    }
-
-    .status-dot.is-loading {
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-
-    .status-dot.is-ready {
-      background: var(--ready);
-      box-shadow: 0 0 0 6px rgba(20, 133, 61, 0.13);
-      animation: none;
-    }
-
-    .status-dot.is-error {
-      background: var(--danger);
-      box-shadow: 0 0 0 6px rgba(198, 40, 40, 0.13);
-      animation: none;
     }
 
     .status-grid {
       display: grid;
-      grid-template-columns: 140px 1fr;
-      gap: 8px 14px;
-      font-size: 0.9rem;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .status-value {
+      font-weight: 800;
       color: var(--muted);
     }
 
-    .status-grid strong {
+    .status-item::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #aab4c3;
+      flex: 0 0 auto;
+    }
+
+    .status-item[data-state='working']::before {
+      background: #b7791f;
+    }
+
+    .status-item[data-state='ok']::before {
+      background: #1b7f4c;
+    }
+
+    .status-item[data-state='error']::before {
+      background: var(--danger);
+    }
+
+    .status-message {
+      margin-top: 14px;
       color: var(--text);
-      font-weight: 700;
-    }
-
-    .status-grid strong.is-ready {
-      color: var(--ready);
-    }
-
-    .status-grid strong.is-error {
-      color: var(--danger);
-    }
-
-    .status-grid strong.is-loading {
-      color: var(--warning);
-    }
-
-    .status-help {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 0.82rem;
+      font-size: 0.95rem;
       line-height: 1.45;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: scale(0.76);
-        opacity: 0.55;
-      }
     }
 
     .incoming-call-notification {
@@ -235,6 +207,7 @@
 
     .notifier-a-controls,
     .hide-controls,
+    .sr-only,
     .dropbtn {
       position: absolute;
       width: 1px;
@@ -255,17 +228,23 @@
       <h1>Unidos por la colaboración</h1>
       <button id="clickToCallBtn" class="call-support-btn" type="button" onclick="initiateCall()" disabled>Click to Call</button>
 
-      <div class="status-panel" role="status" aria-live="polite" aria-atomic="true">
-        <div class="connection-status" id="connectionStatus">
-          <span class="status-dot is-loading" id="statusDot" aria-hidden="true"></span>
-          <span id="clickToCallStatus">Inicializando Webex Calling...</span>
+      <div class="status-panel" aria-live="polite">
+        <p class="status-title">Estado de Webex Calling</p>
+        <div class="status-grid">
+          <div class="status-item" id="configStatusItem" data-state="pending">
+            <span>Configuración</span>
+            <span class="status-value" id="configStatusValue">Pendiente</span>
+          </div>
+          <div class="status-item" id="authStatusItem" data-state="pending">
+            <span>Autenticación</span>
+            <span class="status-value" id="authStatusValue">Pendiente</span>
+          </div>
+          <div class="status-item" id="lineStatusItem" data-state="pending">
+            <span>Línea</span>
+            <span class="status-value" id="lineStatusValue">Pendiente</span>
+          </div>
         </div>
-        <div class="status-grid" aria-label="Estado de Webex Calling">
-          <span>Configuración</span><strong id="configStatus" class="is-loading">Validando</strong>
-          <span>Autenticación</span><strong id="authStatus" class="is-loading">Pendiente</strong>
-          <span>Línea</span><strong id="lineStatus" class="is-loading">Pendiente</strong>
-        </div>
-        <p class="status-help">El botón se habilita cuando la autenticación y el registro de la línea finalizan correctamente.</p>
+        <div id="clickToCallStatus" class="status-message">Validando configuración...</div>
       </div>
     </section>
   </main>
@@ -280,7 +259,7 @@
         <span id="timer">00:00</span>
       </div>
       <div class="call-actions">
-        <button class="cut-call-btn" type="button" aria-label="Finalizar llamada" onclick="disconnectCall()">x</button>
+        <button class="cut-call-btn" type="button" aria-label="Finalizar llamada" onclick="disconnectCall()">×</button>
       </div>
     </div>
     <div class="notifier-a-controls hide-controls" id="notifier-a-controls"></div>
@@ -295,17 +274,8 @@
   <script src="./sdk/calling-sdk.js"></script>
   <script>
     window.addEventListener('load', function () {
-      if (typeof setClickToCallButtonReady === 'function') {
-        setClickToCallButtonReady(false, 'Inicializando Webex Calling...', 'loading');
-      }
-
-      if (typeof initCalling === 'function') {
-        initCalling('customer').catch(function (error) {
-          console.error('No se pudo inicializar Webex Calling:', error);
-          if (typeof setClickToCallStatus === 'function') {
-            setClickToCallStatus('No se pudo inicializar Webex Calling. Revisa la configuracion y la consola.', 'error');
-          }
-        });
+      if (typeof prepareClickToCall === 'function') {
+        prepareClickToCall();
       }
     });
   </script>
