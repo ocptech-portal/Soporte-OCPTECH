@@ -6,6 +6,7 @@ let line;
 let call;
 let incomingCall;
 let localAudioStream;
+let localVideoStream;
 let isLineRegistered = false;
 
 const callNotifyEvent = new CustomEvent('line:incoming_call', {
@@ -89,9 +90,50 @@ function setupLineListeners() {
 
 async function getMediaStreams() {
   const localAudioElem = document.getElementById('local-audio');
+  const localVideoElem = document.getElementById('local-video');
+
+  // Mantiene el flujo original de audio que ya funcionaba.
   localAudioStream = await Calling.createMicrophoneStream({ audio: true });
   if (localAudioElem) {
     localAudioElem.srcObject = localAudioStream.outputStream;
+  }
+
+  // Agrega preview local de video sin romper audio si el navegador o SDK no entregan camara.
+  try {
+    if (Calling && typeof Calling.createCameraStream === 'function') {
+      localVideoStream = await Calling.createCameraStream({ video: true });
+      if (localVideoElem && localVideoStream?.outputStream) {
+        localVideoElem.srcObject = localVideoStream.outputStream;
+      }
+    } else if (navigator.mediaDevices?.getUserMedia) {
+      const browserVideoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      localVideoStream = browserVideoStream;
+      if (localVideoElem) {
+        localVideoElem.srcObject = browserVideoStream;
+      }
+    }
+  } catch (videoError) {
+    console.warn('[Click to Call] No se pudo iniciar video local. La llamada continuara solo con audio.', videoError);
+    localVideoStream = undefined;
+  }
+}
+
+function setVideoElementStream(elementId, streamOrTrack) {
+  const videoElement = document.getElementById(elementId);
+  if (!videoElement || !streamOrTrack) return;
+
+  if (streamOrTrack instanceof MediaStream) {
+    videoElement.srcObject = streamOrTrack;
+    return;
+  }
+
+  if (streamOrTrack.outputStream instanceof MediaStream) {
+    videoElement.srcObject = streamOrTrack.outputStream;
+    return;
+  }
+
+  if (streamOrTrack instanceof MediaStreamTrack) {
+    videoElement.srcObject = new MediaStream([streamOrTrack]);
   }
 }
 
@@ -137,8 +179,18 @@ async function initiateCall(number) {
       if (remoteAudio) remoteAudio.srcObject = new MediaStream([track]);
     });
 
+    // Eventos de video descritos por el sample de Cisco/Webex.
+    call.on('media:local_video', (stream) => {
+      setVideoElementStream('local-video', stream);
+    });
+
+    call.on('media:remote_video', (stream) => {
+      setVideoElementStream('remote-video', stream);
+    });
+
     call.on('disconnect', () => {
       closeCallWindow();
+      cleanupVideoElements();
       setButtonEnabled(true);
       updateStatus('ok', 'ok', 'ok', 'Llamada finalizada. Listo para llamar nuevamente.');
     });
@@ -146,6 +198,7 @@ async function initiateCall(number) {
     call.on('error', (err) => {
       console.error('[Click to Call] Call error', err);
       closeCallWindow();
+      cleanupVideoElements();
       setButtonEnabled(true);
       updateStatus('ok', 'ok', 'error', 'No se pudo realizar la llamada. Revisa consola.');
     });
@@ -154,6 +207,7 @@ async function initiateCall(number) {
   } catch (err) {
     console.error('[Click to Call] Failed in initiating call', err);
     closeCallWindow();
+    cleanupVideoElements();
     setButtonEnabled(true);
     updateStatus('ok', 'ok', 'error', err?.message || 'No se pudo realizar la llamada.');
   }
@@ -167,10 +221,18 @@ function closeCallWindow() {
   if (callNotification) callNotification.toggle('close');
 }
 
+function cleanupVideoElements() {
+  ['local-video', 'remote-video'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.srcObject = null;
+  });
+}
+
 function disconnectCall() {
   try {
     if (call) call.end();
     closeCallWindow();
+    cleanupVideoElements();
     setButtonEnabled(true);
     updateStatus('ok', 'ok', 'ok', 'Llamada finalizada.');
   } catch (err) {
