@@ -21,6 +21,7 @@ const CLICK_TO_CALL_GUEST_NAME = 'Unidos por la colaboración';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
 
+
 let callNotification;
 
 class SimpleCallTimer {
