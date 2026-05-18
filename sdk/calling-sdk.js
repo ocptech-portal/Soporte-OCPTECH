@@ -43,31 +43,65 @@ async function resetCallingSession() {
   incomingCall = undefined;
 }
 
-function waitForCallingReady(callingInstance) {
-  return new Promise((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => {
-      reject(new Error('Timeout esperando el evento ready de Calling.'));
-    }, 30000);
+function isCallingAlreadyReady(callingInstance) {
+  return Boolean(
+    callingInstance && (
+      callingInstance.ready === true ||
+      callingInstance.isReady === true ||
+      callingInstance.status === 'READY' ||
+      callingInstance.state === 'READY'
+    )
+  );
+}
 
-    callingInstance.on('ready', () => {
-      window.clearTimeout(timeoutId);
+function waitForCallingReady(callingInstance) {
+  return new Promise((resolve) => {
+    if (isCallingAlreadyReady(callingInstance)) {
+      logClickToCall('Calling ya estaba en estado ready.');
       resolve();
-    });
+      return;
+    }
+
+    let resolved = false;
+    const finish = (reason) => {
+      if (resolved) return;
+      resolved = true;
+      window.clearTimeout(timeoutId);
+      logClickToCall(reason);
+      resolve();
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      // En algunas versiones del SDK el evento ready puede dispararse antes de que el listener quede asociado.
+      // Para evitar que la demo quede bloqueada, continuamos y dejamos que calling.register() confirme si el SDK está listo.
+      finish('No llegó el evento ready; continúo con register() como fallback.');
+    }, 8000);
+
+    callingInstance.on('ready', () => finish('Evento ready recibido.'));
   });
 }
 
 function waitForLineRegistered(activeLine) {
   return new Promise((resolve, reject) => {
+    let resolved = false;
+
+    const finish = (registeredLine, reason) => {
+      if (resolved) return;
+      resolved = true;
+      window.clearTimeout(timeoutId);
+      line = registeredLine || activeLine;
+      updateAvailability();
+      updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'ok', message: 'Autenticado y línea registrada.' });
+      logClickToCall(reason || 'Línea registrada.');
+      resolve(line);
+    };
+
     const timeoutId = window.setTimeout(() => {
-      reject(new Error('Timeout esperando el registro de la línea.'));
+      reject(new Error('Timeout esperando el registro de la línea. Revisa consola y permisos de Webex Calling.'));
     }, 30000);
 
     activeLine.on('registered', (lineInfo) => {
-      window.clearTimeout(timeoutId);
-      line = lineInfo || activeLine;
-      updateAvailability();
-      updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'ok', message: 'Autenticado y línea registrada.' });
-      resolve(line);
+      finish(lineInfo || activeLine, 'Evento registered recibido.');
     });
 
     activeLine.on('line:incoming_call', (callObj) => {
@@ -75,7 +109,17 @@ function waitForLineRegistered(activeLine) {
       openCallNotification(callObj);
     });
 
-    activeLine.register();
+    const registrationResult = activeLine.register();
+    if (registrationResult && typeof registrationResult.then === 'function') {
+      registrationResult
+        .then((lineInfo) => finish(lineInfo || activeLine, 'line.register() finalizó correctamente.'))
+        .catch((error) => {
+          if (!resolved) {
+            window.clearTimeout(timeoutId);
+            reject(error);
+          }
+        });
+    }
   });
 }
 
@@ -96,7 +140,7 @@ async function initCalling(userType, options = {}) {
     const callingConfig = await getCallingConfig();
 
     calling = await Calling.init({ webexConfig, callingConfig });
-    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK inicializado. Esperando ready.' });
+    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK inicializado. Esperando evento ready o fallback.' });
 
     await waitForCallingReady(calling);
     updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK listo. Registrando Webex Calling.' });
