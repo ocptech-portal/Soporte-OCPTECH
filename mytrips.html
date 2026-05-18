@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unidos por la colaboración</title>
+  <style>
+    :root {
+      --bg-start: #f6f8fb;
+      --bg-end: #e8edf5;
+      --card-bg: #ffffff;
+      --text: #162033;
+      --muted: #5b6678;
+      --accent: #0b5cab;
+      --accent-dark: #08457f;
+      --ready: #14853d;
+      --warning: #b26a00;
+      --danger: #c62828;
+      --border: #dde5ef;
+      --shadow: 0 24px 70px rgba(22, 32, 51, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+      display: grid;
+      place-items: center;
+    }
+
+    .page {
+      width: min(92vw, 760px);
+      padding: 32px;
+    }
+
+    .hero-card {
+      min-height: 420px;
+      padding: clamp(36px, 8vw, 84px) clamp(24px, 6vw, 72px);
+      border-radius: 32px;
+      background: var(--card-bg);
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      gap: 28px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 4.6rem);
+      line-height: 1.05;
+      letter-spacing: -0.06em;
+      max-width: 720px;
+    }
+
+    .call-support-btn {
+      min-width: 220px;
+      border: 0;
+      border-radius: 999px;
+      padding: 18px 34px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #ffffff;
+      background: var(--accent);
+      box-shadow: 0 16px 28px rgba(11, 92, 171, 0.22);
+      transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, opacity 180ms ease;
+    }
+
+    .call-support-btn:hover:not(:disabled),
+    .call-support-btn:focus-visible:not(:disabled) {
+      background: var(--accent-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 20px 34px rgba(11, 92, 171, 0.26);
+    }
+
+    .call-support-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      box-shadow: none;
+    }
+
+    .status-panel {
+      width: min(100%, 520px);
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fbfcfe;
+      text-align: left;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: var(--text);
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      border-radius: 999px;
+      background: var(--warning);
+      box-shadow: 0 0 0 6px rgba(178, 106, 0, 0.12);
+    }
+
+    .status-dot.is-loading {
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    .status-dot.is-ready {
+      background: var(--ready);
+      box-shadow: 0 0 0 6px rgba(20, 133, 61, 0.13);
+      animation: none;
+    }
+
+    .status-dot.is-error {
+      background: var(--danger);
+      box-shadow: 0 0 0 6px rgba(198, 40, 40, 0.13);
+      animation: none;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px 14px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .status-grid strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .status-grid strong.is-ready {
+      color: var(--ready);
+    }
+
+    .status-grid strong.is-error {
+      color: var(--danger);
+    }
+
+    .status-grid strong.is-loading {
+      color: var(--warning);
+    }
+
+    .status-help {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(0.76);
+        opacity: 0.55;
+      }
+    }
+
+    .incoming-call-notification {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: min(92vw, 420px);
+      padding: 16px;
+      border-radius: 22px;
+      background: #ffffff;
+      box-shadow: 0 18px 48px rgba(22, 32, 51, 0.22);
+      transform: translateY(24px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .incoming-call-notification.show-notification {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .notifier-a {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .call-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--accent);
+    }
+
+    .callee-name {
+      font-weight: 700;
+    }
+
+    .call-time {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .cut-call-btn {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+      color: #ffffff;
+      background: var(--danger);
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .notifier-a-controls,
+    .hide-controls,
+    .dropbtn {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <main class="page" id="body">
+    <section class="hero-card" aria-label="Webex Click to Call">
+      <div class="dropbtn" aria-hidden="true"><i id="availability"></i></div>
+      <h1>Unidos por la colaboración</h1>
+      <button id="clickToCallBtn" class="call-support-btn" type="button" onclick="initiateCall()" disabled>Click to Call</button>
+
+      <div class="status-panel" role="status" aria-live="polite" aria-atomic="true">
+        <div class="connection-status" id="connectionStatus">
+          <span class="status-dot is-loading" id="statusDot" aria-hidden="true"></span>
+          <span id="clickToCallStatus">Inicializando Webex Calling...</span>
+        </div>
+        <div class="status-grid" aria-label="Estado de Webex Calling">
+          <span>Configuración</span><strong id="configStatus" class="is-loading">Validando</strong>
+          <span>Autenticación</span><strong id="authStatus" class="is-loading">Pendiente</strong>
+          <span>Línea</span><strong id="lineStatus" class="is-loading">Pendiente</strong>
+        </div>
+        <p class="status-help">El botón se habilita cuando la autenticación y el registro de la línea finalizan correctamente.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="incoming-call-notification timestate" id="callNotification" aria-live="polite">
+    <div class="notifier-a">
+      <div class="call-avatar">W</div>
+      <div class="call-info">
+        <div class="callee-name">Webex Calling</div>
+      </div>
+      <div class="call-time" id="call-time">
+        <span id="timer">00:00</span>
+      </div>
+      <div class="call-actions">
+        <button class="cut-call-btn" type="button" aria-label="Finalizar llamada" onclick="disconnectCall()">x</button>
+      </div>
+    </div>
+    <div class="notifier-a-controls hide-controls" id="notifier-a-controls"></div>
+  </div>
+
+  <audio id="local-audio" muted autoplay playsinline></audio>
+  <audio id="customer-remote-audio" autoplay playsinline></audio>
+
+  <script src="https://unpkg.com/webex/umd/webex.min.js"></script>
+  <script src="https://unpkg.com/webex@3.5.0-next.25/umd/calling.min.js"></script>
+  <script src="./js/app.js"></script>
+  <script src="./sdk/calling-sdk.js"></script>
+  <script>
+    window.addEventListener('load', function () {
+      if (typeof setClickToCallButtonReady === 'function') {
+        setClickToCallButtonReady(false, 'Inicializando Webex Calling...', 'loading');
+      }
+
+      if (typeof initCalling === 'function') {
+        initCalling('customer').catch(function (error) {
+          console.error('No se pudo inicializar Webex Calling:', error);
+          if (typeof setClickToCallStatus === 'function') {
+            setClickToCallStatus('No se pudo inicializar Webex Calling. Revisa la configuracion y la consola.', 'error');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
