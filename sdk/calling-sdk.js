@@ -5,6 +5,7 @@ let call;
 let incomingCall;
 let localAudioStream;
 let isCallStarting = false;
+let readyTimeoutId;
 
 async function safeInvoke(target, methodName) {
   try {
@@ -13,7 +14,7 @@ async function safeInvoke(target, methodName) {
       if (result && typeof result.then === 'function') await result;
     }
   } catch (error) {
-    console.warn(`[Click to Call] ${methodName} falló durante limpieza:`, error);
+    console.warn(`[Click to Call] ${methodName} fallo durante limpieza:`, error);
   }
 }
 
@@ -31,6 +32,8 @@ function stopLocalMediaStream() {
 }
 
 async function resetCallingSession() {
+  window.clearTimeout(readyTimeoutId);
+  readyTimeoutId = undefined;
   stopLocalMediaStream();
   await safeInvoke(line, 'unregister');
   await safeInvoke(calling, 'unregister');
@@ -43,65 +46,59 @@ async function resetCallingSession() {
   incomingCall = undefined;
 }
 
-function isCallingAlreadyReady(callingInstance) {
-  return Boolean(
-    callingInstance && (
-      callingInstance.ready === true ||
-      callingInstance.isReady === true ||
-      callingInstance.status === 'READY' ||
-      callingInstance.state === 'READY'
-    )
-  );
-}
-
 function waitForCallingReady(callingInstance) {
-  return new Promise((resolve) => {
-    if (isCallingAlreadyReady(callingInstance)) {
-      logClickToCall('Calling ya estaba en estado ready.');
-      resolve();
-      return;
-    }
+  return new Promise((resolve, reject) => {
+    let settled = false;
 
-    let resolved = false;
-    const finish = (reason) => {
-      if (resolved) return;
-      resolved = true;
-      window.clearTimeout(timeoutId);
-      logClickToCall(reason);
+    const finishOk = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(readyTimeoutId);
+      logClickToCall('Evento ready recibido.');
       resolve();
     };
 
-    const timeoutId = window.setTimeout(() => {
-      // En algunas versiones del SDK el evento ready puede dispararse antes de que el listener quede asociado.
-      // Para evitar que la demo quede bloqueada, continuamos y dejamos que calling.register() confirme si el SDK está listo.
-      finish('No llegó el evento ready; continúo con register() como fallback.');
-    }, 8000);
+    const finishError = () => {
+      if (settled) return;
+      settled = true;
+      const message = 'El SDK no emitio ready en 15 segundos. No se forzo register() para evitar el 400 en web/device. Revisa guest token, call token/JWE, region, pais y numero destino.';
+      updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'error', message });
+      reject(new Error(message));
+    };
 
-    callingInstance.on('ready', () => finish('Evento ready recibido.'));
+    readyTimeoutId = window.setTimeout(finishError, 15000);
+    callingInstance.on('ready', finishOk);
   });
 }
 
 function waitForLineRegistered(activeLine) {
   return new Promise((resolve, reject) => {
-    let resolved = false;
+    let settled = false;
 
-    const finish = (registeredLine, reason) => {
-      if (resolved) return;
-      resolved = true;
+    const finishOk = (registeredLine, reason) => {
+      if (settled) return;
+      settled = true;
       window.clearTimeout(timeoutId);
       line = registeredLine || activeLine;
       updateAvailability();
-      updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'ok', message: 'Autenticado y línea registrada.' });
-      logClickToCall(reason || 'Línea registrada.');
+      updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'ok', message: 'Autenticado y linea registrada. Iniciando llamada.' });
+      logClickToCall(reason || 'Linea registrada.');
       resolve(line);
     };
 
+    const finishError = (error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      reject(error);
+    };
+
     const timeoutId = window.setTimeout(() => {
-      reject(new Error('Timeout esperando el registro de la línea. Revisa consola y permisos de Webex Calling.'));
+      finishError(new Error('Timeout esperando el registro de la linea. Revisa el response body del request web/device en DevTools.'));
     }, 30000);
 
     activeLine.on('registered', (lineInfo) => {
-      finish(lineInfo || activeLine, 'Evento registered recibido.');
+      finishOk(lineInfo || activeLine, 'Evento registered recibido.');
     });
 
     activeLine.on('line:incoming_call', (callObj) => {
@@ -109,16 +106,15 @@ function waitForLineRegistered(activeLine) {
       openCallNotification(callObj);
     });
 
-    const registrationResult = activeLine.register();
-    if (registrationResult && typeof registrationResult.then === 'function') {
-      registrationResult
-        .then((lineInfo) => finish(lineInfo || activeLine, 'line.register() finalizó correctamente.'))
-        .catch((error) => {
-          if (!resolved) {
-            window.clearTimeout(timeoutId);
-            reject(error);
-          }
-        });
+    try {
+      const registrationResult = activeLine.register();
+      if (registrationResult && typeof registrationResult.then === 'function') {
+        registrationResult
+          .then((lineInfo) => finishOk(lineInfo || activeLine, 'line.register() finalizo correctamente.'))
+          .catch(finishError);
+      }
+    } catch (error) {
+      finishError(error);
     }
   });
 }
@@ -131,8 +127,8 @@ async function initCalling(userType, options = {}) {
   }
 
   try {
-    setClickToCallButtonReady(false, 'Preparando sesión nueva de Webex Calling.');
-    updateAuthIndicator({ config: 'ok', auth: 'working', line: 'pending', message: 'Preparando sesión nueva.' });
+    setClickToCallButtonReady(false, 'Preparando sesion nueva de Webex Calling.');
+    updateAuthIndicator({ config: 'ok', auth: 'working', line: 'pending', message: 'Preparando sesion nueva.' });
 
     await resetCallingSession();
 
@@ -140,20 +136,20 @@ async function initCalling(userType, options = {}) {
     const callingConfig = await getCallingConfig();
 
     calling = await Calling.init({ webexConfig, callingConfig });
-    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK inicializado. Esperando evento ready o fallback.' });
+    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK inicializado. Esperando evento ready...' });
 
     await waitForCallingReady(calling);
-    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK listo. Registrando Webex Calling.' });
 
+    updateAuthIndicator({ config: 'ok', auth: 'ok', line: 'working', message: 'SDK listo. Registrando Webex Calling...' });
     await calling.register();
-    callingClient = window.callingClient = calling.callingClient;
 
+    callingClient = window.callingClient = calling.callingClient;
     const lines = callingClient && typeof callingClient.getLines === 'function'
       ? Object.values(callingClient.getLines())
       : [];
 
     line = lines[0];
-    if (!line) throw new Error('No se encontró una línea disponible para registrar.');
+    if (!line) throw new Error('No se encontro una linea disponible para registrar.');
 
     return waitForLineRegistered(line);
   } catch (error) {
@@ -187,9 +183,9 @@ function bindOutboundCallEvents() {
 
   call.on('disconnect', async () => {
     closeCallWindow();
-    setClickToCallStatus('Llamada finalizada. Preparando próximo intento.');
+    setClickToCallStatus('Llamada finalizada. Preparando proximo intento.');
     await resetCallingSession();
-    updateAuthIndicator({ config: 'ok', auth: 'pending', line: 'pending', message: 'Listo. Se generará un token nuevo en el próximo clic.' });
+    updateAuthIndicator({ config: 'ok', auth: 'pending', line: 'pending', message: 'Listo. Se generara un token nuevo en el proximo clic.' });
     setClickToCallButtonReady(true);
   });
 
@@ -197,7 +193,7 @@ function bindOutboundCallEvents() {
     console.error('Error en la llamada:', error);
     closeCallWindow();
     await resetCallingSession();
-    updateAuthIndicator({ config: 'ok', auth: 'error', line: 'error', message: 'Error en la llamada. El próximo clic generará token nuevo.' });
+    updateAuthIndicator({ config: 'ok', auth: 'error', line: 'error', message: 'Error en la llamada. El proximo clic generara token nuevo.' });
     setClickToCallButtonReady(true);
   });
 }
@@ -214,7 +210,7 @@ async function initiateCall(number) {
 
     const activeLine = await initCalling('customer', { forceNew: true });
     if (!activeLine || typeof activeLine.makeCall !== 'function') {
-      throw new Error('Webex Calling aún no está listo.');
+      throw new Error('Webex Calling aun no esta listo.');
     }
 
     await getMediaStreams();
@@ -226,7 +222,7 @@ async function initiateCall(number) {
     });
 
     bindOutboundCallEvents();
-    call.dial(localAudioStream);
+    await call.dial(localAudioStream);
   } catch (error) {
     console.error('No se pudo iniciar la llamada:', error);
     closeCallWindow();
