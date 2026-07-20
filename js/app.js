@@ -14,7 +14,7 @@
 */
 let service_app_token = 'MzlhODg0NjctYTQyNy00OTgzLTljZTQtMGJhZTExNjk5ZGExZWIyMTY3MTYtNzJh_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c';
 let service_app_refresh_token = 'RDBjODVjMDMtZjRmZS00MjMxLWIxZGEtNTY2NjVhZjAyMjYwODVkOTViZTAtODBh_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c';
-const service_app_client_id = 'Cf016dc6ec4ab05197993b9064ca5de169f75a491f622cf9cad4be5d7c6437c27';
+const service_app_client_id = 'Cc4d1200480c95f7e0667cdf0891b24ca7ebbeeaca5fb9b4588db00e645397ddd';
 const service_app_client_secret = 'e5d6461d9b34ba964c5f7dd9abd3605f33e5983724bf5fc4d2ada8d7ea3f95ca';
 const CLICK_TO_CALL_CALLED_NUMBER = '9651';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
