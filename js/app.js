@@ -12,10 +12,10 @@
   Para producción, no expongas el token de la Service App en el navegador.
   La generación de guest token y call token debería hacerse desde un backend.
 */
-let service_app_token = 'YmRiYWYxZDgtOWMyYi00MzcxLWIzNTItZWE4NGI3ZGFjMzBiNDRhODQ5YWQtYjlm_PF84_8c3c67f5-9dba-4be8-b058-76d7afe45521';
-let service_app_refresh_token = 'RmYwNGM2MWYtMjEzMi00ZmEwLWIwMjctMDU5ZjJmMDZhYWUyOGVlYzA4YmMtYmQ3_P0A1_cbbe27d4-1f60-43cb-819b-fd3749c66621';
+let service_app_token = 'MzlhODg0NjctYTQyNy00OTgzLTljZTQtMGJhZTExNjk5ZGExZWIyMTY3MTYtNzJh_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c';
+let service_app_refresh_token = 'RDBjODVjMDMtZjRmZS00MjMxLWIxZGEtNTY2NjVhZjAyMjYwODVkOTViZTAtODBh_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c';
 const service_app_client_id = 'Cf016dc6ec4ab05197993b9064ca5de169f75a491f622cf9cad4be5d7c6437c27';
-const service_app_client_secret = 'd87285311cd8aa344852752e93fc5e46d56932063e9e31e5c6505b760785c4fd';
+const service_app_client_secret = 'e5d6461d9b34ba964c5f7dd9abd3605f33e5983724bf5fc4d2ada8d7ea3f95ca';
 const CLICK_TO_CALL_CALLED_NUMBER = '9651';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
