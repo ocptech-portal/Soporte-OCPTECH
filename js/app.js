@@ -17,7 +17,7 @@ let service_app_refresh_token = 'RmYwNGM2MWYtMjEzMi00ZmEwLWIwMjctMDU5ZjJmMDZhYWU
 const service_app_client_id = 'C4520cddc2b0ac89d869367514e998a9160e4c2bd02ecb57bbdb04224c39c095e';
 const service_app_client_secret = '3546525dbb64c8fed2d6bea115f721928cbd4baf69c8adfa85be20937b9cffab';
 const CLICK_TO_CALL_CALLED_NUMBER = '6100';
-const CLICK_TO_CALL_GUEST_NAME = 'Unidos por la colaboración';
+const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
 
