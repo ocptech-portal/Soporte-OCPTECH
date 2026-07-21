@@ -27,9 +27,11 @@ const CLICK_TO_CALL_CALLED_NUMBER = '9651';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
+/*
 const data = await readJsonResponse(response);
-'console.log(data);
-'let callNotification;
+console.log(data);
+*/
+let callNotification;
 
 class SimpleCallTimer {
   constructor(timerElement) {
