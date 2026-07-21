@@ -23,7 +23,7 @@ let service_app_refresh_token = 'RDZkM2U0YmMtMzgxOS00YmUwLTk4MTYtNWY1NzAzMzc5MWU
 const service_app_client_id = 'Ca54f9127b200556fec167b0fd96db5cad625d20ba3de510d40ad6718af6699c8';
 const service_app_client_secret = 'c6af6c268a29b72348c18361f205e22086406cd4a97de8e45c0c9d3969fdd671';
 
-const CLICK_TO_CALL_CALLED_NUMBER = '9651';
+const CLICK_TO_CALL_CALLED_NUMBER = '9699';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
