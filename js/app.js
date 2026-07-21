@@ -21,7 +21,8 @@ const CLICK_TO_CALL_CALLED_NUMBER = '9651';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'US';
-
+const data = await readJsonResponse(response);
+console.log(data);
 let callNotification;
 
 class SimpleCallTimer {
@@ -370,6 +371,7 @@ async function getJweToken() {
   });
 
   const data = await readJsonResponse(response);
+  console.log(data);
   if (!response.ok || !data.callToken) {
     throw new Error(`No se pudo obtener el call token (${response.status}): ${JSON.stringify(data)}`);
   }
