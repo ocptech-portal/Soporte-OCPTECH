@@ -376,8 +376,7 @@ async function getJweToken() {
     redirect: 'follow',
   });
 
-  const data = await readJsonResponse(response);
-  console.log(data);
+  const data = await readJsonResponse(response);  
   if (!response.ok || !data.callToken) {
     throw new Error(`No se pudo obtener el call token (${response.status}): ${JSON.stringify(data)}`);
   }
