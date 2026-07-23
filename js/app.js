@@ -1,33 +1,11 @@
-/*
-  Configuración requerida:
-  1. service_app_token: access token actual de la Service App de Webex.
-  2. service_app_refresh_token: refresh token de la Service App de Webex.
-  3. service_app_client_id / service_app_client_secret: credenciales OAuth de la Service App.
-  4. CLICK_TO_CALL_CALLED_NUMBER: número, cola o destino que recibirá la llamada.
-
-  Nota importante:
-  El call token/JWE de Click-to-Call se solicita nuevamente en cada clic.
-  No lo reutilices entre llamadas, porque puede expirar o quedar consumido y provocar 403.
-
-  Para producción, no expongas el token de la Service App en el navegador.
-  La generación de guest token y call token debería hacerse desde un backend.
-  gold
-/*
-
 let service_app_token = 'C13f7cd6d069e83fce9f0d55cc482ea3cfbf8c494285f02ef74fa2b9d63db4401'
 let service_app_refresh_token = 'f180ad6ad010c84944382c2c4e316e6f7c03120ddfcd8153f55eb8b0973093e4'
 const service_app_client_id = 'NDMxODZjMGMtMTkzMC00ZWJkLThlM2MtMmE3MWQ4MWJmNTE3MzRjYzMyN2ItNmU3_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c'
 const service_app_client_secret = 'RTNiZWZiY2MtYmUwYi00YzFiLWI2MTMtYjlhM2NkMzQ1OGU0YTIwODJjNTctNTcx_P0A1_13ab0633-3ac9-4201-86fb-b00be6f71b9c'
-
-
 const CLICK_TO_CALL_CALLED_NUMBER = '88888';
 const CLICK_TO_CALL_GUEST_NAME = 'Soporte clic-to-call';
 const WEBEX_DISCOVERY_REGION = 'US-EAST';
 const WEBEX_DISCOVERY_COUNTRY = 'AR';
-/*
-const data = await readJsonResponse(response);
-console.log(data);
-*/
 let callNotification;
 
 class SimpleCallTimer {
