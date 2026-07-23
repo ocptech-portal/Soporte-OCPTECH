@@ -12,6 +12,7 @@
   Para producción, no expongas el token de la Service App en el navegador.
   La generación de guest token y call token debería hacerse desde un backend.
   gold
+/*
 
 let service_app_token = 'C13f7cd6d069e83fce9f0d55cc482ea3cfbf8c494285f02ef74fa2b9d63db4401'
 let service_app_refresh_token = 'f180ad6ad010c84944382c2c4e316e6f7c03120ddfcd8153f55eb8b0973093e4'
